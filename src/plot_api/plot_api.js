@@ -152,7 +152,13 @@ function plot(gd, data, layout, config) {
     fullLayout._replotting = true;
 
     // make or remake the framework if we need to
-    if(graphWasEmpty) makePlotFramework(gd);
+    if(graphWasEmpty || fullLayout._shouldCreateBgLayer) {
+        makePlotFramework(gd);
+
+        if(fullLayout._shouldCreateBgLayer) {
+            delete fullLayout._shouldCreateBgLayer;
+        }
+    }
 
     // polar need a different framework
     if(gd.framework !== makePlotFramework) {
@@ -1733,13 +1739,14 @@ function _restyle(gd, aobj, traces) {
         // swap hovermode if set to "compare x/y data"
         if(ai === 'orientationaxes') {
             var hovermode = nestedProperty(gd.layout, 'hovermode');
-            if(hovermode.get() === 'x') {
+            var h = hovermode.get();
+            if(h === 'x') {
                 hovermode.set('y');
-            } else if(hovermode.get() === 'y') {
+            } else if(h === 'y') {
                 hovermode.set('x');
-            } else if(hovermode.get() === 'x unified') {
+            } else if(h === 'x unified') {
                 hovermode.set('y unified');
-            } else if(hovermode.get() === 'y unified') {
+            } else if(h === 'y unified') {
                 hovermode.set('x unified');
             }
         }
@@ -2706,6 +2713,16 @@ function react(gd, data, layout, config) {
 
         applyUIRevisions(gd.data, gd.layout, oldFullData, oldFullLayout);
 
+        var allNames = Object.getOwnPropertyNames(oldFullLayout);
+        for(var q = 0; q < allNames.length; q++) {
+            var name = allNames[q];
+            var start = name.substring(0, 5);
+            if(start === 'xaxis' || start === 'yaxis') {
+                var emptyCategories = oldFullLayout[name]._emptyCategories;
+                if(emptyCategories) emptyCategories();
+            }
+        }
+
         // "true" skips updating calcdata and remapping arrays from calcTransforms,
         // which supplyDefaults usually does at the end, but we may need to NOT do
         // if the diff (which we haven't determined yet) says we'll recalc
@@ -2753,6 +2770,8 @@ function react(gd, data, layout, config) {
         // when at least one animatable attribute has changed,
         // N.B. config changed aren't animatable
         if(newFullLayout.transition && !configChanged && (restyleFlags.anim || relayoutFlags.anim)) {
+            if(relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
+
             Plots.doCalcdata(gd);
             subroutines.doAutoRangeAndConstraints(gd);
 
@@ -3137,7 +3156,7 @@ function animate(gd, frameOrGroupNameOrFrameList, animationOpts) {
         throw new Error(
             'This element is not a Plotly plot: ' + gd + '. It\'s likely that you\'ve failed ' +
             'to create a plot before animating it. For more details, see ' +
-            'https://plot.ly/javascript/animations/'
+            'https://plotly.com/javascript/animations/'
         );
     }
 
@@ -3504,7 +3523,7 @@ function addFrames(gd, frameList, indices) {
         throw new Error(
             'This element is not a Plotly plot: ' + gd + '. It\'s likely that you\'ve failed ' +
             'to create a plot before adding frames. For more details, see ' +
-            'https://plot.ly/javascript/animations/'
+            'https://plotly.com/javascript/animations/'
         );
     }
 

@@ -9,6 +9,7 @@
 'use strict';
 
 var d3 = require('d3');
+var timeFormatLocale = require('d3-time-format').timeFormatLocale;
 var isNumeric = require('fast-isnumeric');
 
 var Registry = require('../registry');
@@ -19,6 +20,7 @@ var Color = require('../components/color');
 var BADNUM = require('../constants/numerical').BADNUM;
 
 var axisIDs = require('./cartesian/axis_ids');
+var clearSelect = require('./cartesian/handle_outline').clearSelect;
 
 var animationAttrs = require('./animation_attributes');
 var frameAttrs = require('./frame_attributes');
@@ -215,9 +217,10 @@ function positionPlayWithData(gd, container) {
 }
 
 plots.sendDataToCloud = function(gd) {
-    gd.emit('plotly_beforeexport');
-
     var baseUrl = (window.PLOTLYENV || {}).BASE_URL || gd._context.plotlyServerURL;
+    if(!baseUrl) return;
+
+    gd.emit('plotly_beforeexport');
 
     var hiddenformDiv = d3.select(gd)
         .append('div')
@@ -480,13 +483,29 @@ plots.supplyDefaults = function(gd, opts) {
     // clean subplots and other artifacts from previous plot calls
     plots.cleanPlot(newFullData, newFullLayout, oldFullData, oldFullLayout);
 
+    var hadGL2D = !!(oldFullLayout._has && oldFullLayout._has('gl2d'));
+    var hasGL2D = !!(newFullLayout._has && newFullLayout._has('gl2d'));
+    var hadCartesian = !!(oldFullLayout._has && oldFullLayout._has('cartesian'));
+    var hasCartesian = !!(newFullLayout._has && newFullLayout._has('cartesian'));
+    var hadBgLayer = hadCartesian || hadGL2D;
+    var hasBgLayer = hasCartesian || hasGL2D;
+    if(hadBgLayer && !hasBgLayer) {
+        // remove bgLayer
+        oldFullLayout._bgLayer.remove();
+    } else if(hasBgLayer && !hadBgLayer) {
+        // create bgLayer
+        newFullLayout._shouldCreateBgLayer = true;
+    }
+
     // clear selection outline until we implement persistent selection,
     // don't clear them though when drag handlers (e.g. listening to
     // `plotly_selecting`) update the graph.
     // we should try to come up with a better solution when implementing
     // https://github.com/plotly/plotly.js/issues/1851
     if(oldFullLayout._zoomlayer && !gd._dragging) {
-        oldFullLayout._zoomlayer.selectAll('.select-outline').remove();
+        clearSelect({ // mock old gd
+            _fullLayout: oldFullLayout
+        });
     }
 
 
@@ -705,7 +724,10 @@ function getFormatter(formatObj, separators) {
     formatObj.decimal = separators.charAt(0);
     formatObj.thousands = separators.charAt(1);
 
-    return d3.locale(formatObj);
+    return {
+        numberFormat: d3.locale(formatObj).numberFormat,
+        timeFormat: timeFormatLocale(formatObj).utcFormat
+    };
 }
 
 function fillMetaTextHelpers(newFullData, newFullLayout) {
@@ -1482,7 +1504,7 @@ plots.supplyLayoutGlobalDefaults = function(layoutIn, layoutOut, formatObj) {
 
     // Make sure that autosize is defaulted to *true*
     // on layouts with no set width and height for backward compatibly,
-    // in particular https://plot.ly/javascript/responsive-fluid-layout/
+    // in particular https://plotly.com/javascript/responsive-fluid-layout/
     //
     // Before https://github.com/plotly/plotly.js/pull/635 ,
     // layouts with no set width and height were set temporary set to 'initial'
@@ -1523,6 +1545,11 @@ plots.supplyLayoutGlobalDefaults = function(layoutIn, layoutOut, formatObj) {
     coerce('modebar.activecolor', Color.addOpacity(modebarDefaultColor, 0.7));
     coerce('modebar.uirevision', uirevision);
 
+    Registry.getComponentMethod(
+        'shapes',
+        'supplyDrawNewShapeDefaults'
+    )(layoutIn, layoutOut, coerce);
+
     coerce('meta');
 
     // do not include defaults in fullLayout when users do not set transition
@@ -1542,6 +1569,15 @@ plots.supplyLayoutGlobalDefaults = function(layoutIn, layoutOut, formatObj) {
         'supplyLayoutGlobalDefaults'
     )(layoutIn, layoutOut, coerce);
 };
+
+function getComputedSize(attr) {
+    return (
+        (typeof attr === 'string') &&
+        (attr.substr(attr.length - 2) === 'px') &&
+        parseFloat(attr)
+    );
+}
+
 
 plots.plotAutoSize = function plotAutoSize(gd, layout, fullLayout) {
     var context = gd._context || {};
@@ -1569,8 +1605,8 @@ plots.plotAutoSize = function plotAutoSize(gd, layout, fullLayout) {
         // but don't enforce any ratio restrictions
         var computedStyle = isPlotDiv ? window.getComputedStyle(gd) : {};
 
-        newWidth = parseFloat(computedStyle.width) || parseFloat(computedStyle.maxWidth) || fullLayout.width;
-        newHeight = parseFloat(computedStyle.height) || parseFloat(computedStyle.maxHeight) || fullLayout.height;
+        newWidth = getComputedSize(computedStyle.width) || getComputedSize(computedStyle.maxWidth) || fullLayout.width;
+        newHeight = getComputedSize(computedStyle.height) || getComputedSize(computedStyle.maxHeight) || fullLayout.height;
 
         if(isNumeric(frameMargins) && frameMargins > 0) {
             var factor = 1 - 2 * frameMargins;

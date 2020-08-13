@@ -22,6 +22,7 @@ var Axes = require('../cartesian/axes');
 var getAutoRange = require('../cartesian/autorange').getAutoRange;
 var dragElement = require('../../components/dragelement');
 var prepSelect = require('../cartesian/select').prepSelect;
+var clearSelect = require('../cartesian/select').clearSelect;
 var selectOnClick = require('../cartesian/select').selectOnClick;
 
 var createGeoZoom = require('./zoom');
@@ -229,7 +230,7 @@ proto.updateProjection = function(geoCalcData, fullLayout) {
 
             var projType = projLayout.type;
             var lonHalfSpan = (constants.lonaxisSpan[projType] / 2) || 180;
-            var latHalfSpan = (constants.lataxisSpan[projType] / 2) || 180;
+            var latHalfSpan = (constants.lataxisSpan[projType] / 2) || 90;
 
             lonaxisRange = [midLon - lonHalfSpan, midLon + lonHalfSpan];
             lataxisRange = [midLat - latHalfSpan, midLat + latHalfSpan];
@@ -489,7 +490,7 @@ proto.updateFx = function(fullLayout, geoLayout) {
         subplot: _this.id,
         clickFn: function(numClicks) {
             if(numClicks === 2) {
-                fullLayout._zoomlayer.selectAll('.select-outline').remove();
+                clearSelect(gd);
             }
         }
     };

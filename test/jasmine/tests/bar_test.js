@@ -15,7 +15,7 @@ var failTest = require('../assets/fail_test');
 var negateIf = require('../assets/negate_if');
 var checkTicks = require('../assets/custom_assertions').checkTicks;
 var supplyAllDefaults = require('../assets/supply_defaults');
-var color = require('../../../src/components/color');
+var color = require('@src/components/color');
 var rgb = color.rgb;
 
 var checkEventData = require('../assets/check_event_data');
@@ -422,6 +422,31 @@ describe('Bar.calc', function() {
 
         var cd = gd.calcdata;
         assertPointField(cd, 'mlw', [[2, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 10]]);
+    });
+
+    it('should translate sizes e.g. 2000 to milliseconds not to year when base is present (vertical case)', function() {
+        var gd = mockBarPlot([{
+            type: 'bar',
+            base: [0],
+            y: [2000],
+            x: ['A']
+        }], {yaxis: {type: 'date'}});
+
+        var cd = gd.calcdata;
+        assertPointField(cd, 's', [[2000]]);
+    });
+
+    it('should translate sizes e.g. 2000 to milliseconds not to year when base is present (horizontal case)', function() {
+        var gd = mockBarPlot([{
+            type: 'bar',
+            orientation: 'h',
+            base: [0],
+            x: [2000],
+            y: ['A']
+        }], {xaxis: {type: 'date'}});
+
+        var cd = gd.calcdata;
+        assertPointField(cd, 's', [[2000]]);
     });
 });
 
@@ -2600,6 +2625,26 @@ describe('bar hover', function() {
             });
         });
     });
+
+    describe('gantt chart using milliseconds from base', function() {
+        beforeAll(function(done) {
+            gd = createGraphDiv();
+
+            var mock = Lib.extendDeep({}, require('@mocks/bar-with-milliseconds.json'));
+
+            Plotly.newPlot(gd, mock.data, mock.layout)
+            .catch(failTest)
+            .then(done);
+        });
+
+        it('should display the correct bar length passed in milliseconds from base', function() {
+            var out = _hover(gd, 0.5, 0.75, 'y');
+
+            var xEnd = out.style[2];
+            expect(xEnd).not.toBe(1580670000000);
+            expect(xEnd).toBe(1580688000000);
+        });
+    });
 });
 
 describe('Text templates on bar traces:', function() {
@@ -2932,7 +2977,7 @@ describe('bar tweening', function() {
           .then(done);
     });
 
-    it('handle NaN positions on vertical bars', function(done) {
+    it('handle BADNUM positions on vertical bars', function(done) {
         var y1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         var y2 = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
         var mockCopy = {

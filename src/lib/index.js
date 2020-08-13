@@ -9,6 +9,7 @@
 'use strict';
 
 var d3 = require('d3');
+var utcFormat = require('d3-time-format').utcFormat;
 var isNumeric = require('fast-isnumeric');
 
 var numConstants = require('../constants/numerical');
@@ -259,10 +260,10 @@ lib.bBoxIntersect = function(a, b, pad) {
  * func: the function to apply
  * x1, x2: optional extra args
  */
-lib.simpleMap = function(array, func, x1, x2) {
+lib.simpleMap = function(array, func, x1, x2, opts) {
     var len = array.length;
     var out = new Array(len);
-    for(var i = 0; i < len; i++) out[i] = func(array[i], x1, x2);
+    for(var i = 0; i < len; i++) out[i] = func(array[i], x1, x2, opts);
     return out;
 };
 
@@ -1084,7 +1085,7 @@ function templateFormatString(string, labels, d3locale) {
             }
 
             if(format[0] === '|') {
-                fmt = d3locale ? d3locale.timeFormat.utc : d3.time.format.utc;
+                fmt = d3locale ? d3locale.timeFormat : utcFormat;
                 var ms = lib.dateTime2ms(value);
                 value = lib.formatDate(ms, format.replace(TEMPLATE_STRING_FORMAT_SEPARATOR, ''), false, fmt);
             }

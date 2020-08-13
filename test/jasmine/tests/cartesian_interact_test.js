@@ -1946,7 +1946,7 @@ describe('axis zoom/pan and main plot zoom', function() {
                         hasDragData: true,
                         selectingCnt: 1,
                         selectedCnt: 0,
-                        selectOutline: 'M20,20L20,220L220,220L220,20L20,20Z'
+                        selectOutline: 'M20,20L20,220L220,220L220,20Z'
                     }))
                     .then(delay(100))
                     .then(_assert('while holding on mouse', {
@@ -1954,7 +1954,7 @@ describe('axis zoom/pan and main plot zoom', function() {
                         hasDragData: true,
                         selectingCnt: 1,
                         selectedCnt: 0,
-                        selectOutline: 'M20,20L20,220L220,220L220,20L20,20Z'
+                        selectOutline: 'M20,20L20,220L220,220L220,20Z'
                     }))
                     .then(drag.end);
             })
@@ -2135,7 +2135,7 @@ describe('axis zoom/pan and main plot zoom', function() {
                     '1970-01-01 00:00:00.2019'
                 ]);
             })
-            .then(doDrag('xy', 'nsew', 0, 50))
+            .then(doDrag('xy', 'nsew', 0, -50))
             // y range would be ~ [62, 100] w/o rangebreaks
             .then(function() {
                 _assert('after y-only zoombox', [
@@ -2151,7 +2151,7 @@ describe('axis zoom/pan and main plot zoom', function() {
                 ]);
             })
             .then(function() { return Plotly.relayout(gd, 'dragmode', 'pan'); })
-            .then(doDrag('xy', 'nsew', 0, 50))
+            .then(doDrag('xy', 'nsew', 0, -50))
             // y range would be ~ [35, 239] w/o rangebreaks
             .then(function() {
                 _assert('after y-only pan', [
